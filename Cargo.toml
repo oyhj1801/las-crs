@@ -1,0 +1,9 @@
+[package]
+name = "las-crs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+byteorder = "1.5.0"
+las = "0.9.3"
+thiserror = "2.0.11"
