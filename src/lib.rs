@@ -2,6 +2,8 @@ use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::{Cursor, Seek, SeekFrom};
 use thiserror::Error;
 
+use log::{log, Level};
+
 pub type CrsResult<T> = std::result::Result<T, CrsError>;
 
 // horizontal and optional vertical crs
@@ -21,7 +23,6 @@ pub enum CrsError {
     UndefinedDataForGeoTiffKey(u16),
     #[error("The crs parser does not handle geotiff ascii and string defined CRS's")]
     UnimplementedForGeoTiffAsciiAndStringData(GeoTiffData),
-    //[std::io::Error]
     #[error(transparent)]
     Io(#[from] std::io::Error),
 }
@@ -48,15 +49,27 @@ pub fn parse_las_crs(header: &las::Header) -> CrsResult<EPSG> {
 
     if crs_vlrs[0].is_some() {
         if !header.has_wkt_crs() {
-            eprintln!("WKT CRS VLR found but header says it does not exists");
+            log!(
+                Level::Warn,
+                "WKT CRS VLR found, but header says it does not exists"
+            );
         }
         get_wkt_epsg(crs_vlrs[0].clone().unwrap())
     } else if crs_vlrs[1].is_some() {
         if header.has_wkt_crs() {
-            eprintln!("No WKT CRS VLR found but header says it exists");
+            log!(
+                Level::Warn,
+                "No WKT CRS VLR found but header says it exists"
+            );
         }
         get_geotiff_epsg(crs_vlrs)
     } else {
+        if header.has_wkt_crs() {
+            log!(
+                Level::Warn,
+                "No WKT CRS VLR found but header says it exists"
+            );
+        }
         Err(CrsError::NoCrs)
     }
 }
@@ -118,6 +131,7 @@ fn get_geotiff_epsg(vlrs: [Option<Vec<u8>>; 4]) -> CrsResult<EPSG> {
                 if let GeoTiffData::U16(v) = entry.data {
                     out.0 = Some(v);
                 } else {
+                    // should probably add support for this
                     return Err(CrsError::UndefinedDataForGeoTiffKey(3072));
                 }
             }
@@ -126,6 +140,7 @@ fn get_geotiff_epsg(vlrs: [Option<Vec<u8>>; 4]) -> CrsResult<EPSG> {
                 if let GeoTiffData::U16(v) = entry.data {
                     out.0 = Some(v);
                 } else {
+                    // should probably add support for this
                     return Err(CrsError::UndefinedDataForGeoTiffKey(2048));
                 }
             }
@@ -134,6 +149,7 @@ fn get_geotiff_epsg(vlrs: [Option<Vec<u8>>; 4]) -> CrsResult<EPSG> {
                 if let GeoTiffData::U16(v) = entry.data {
                     out.1 = Some(v);
                 } else {
+                    // should probably add support for this
                     return Err(CrsError::UndefinedDataForGeoTiffKey(4096));
                 }
             }
@@ -198,7 +214,7 @@ impl GeoTiffKeyEntry {
             34736 => {
                 let mut cursor =
                     Cursor::new(double_vlr.as_ref().ok_or(CrsError::UnreadableGeotiffCrs)?);
-                cursor.seek(SeekFrom::Start(offset as u64))?;
+                cursor.seek(SeekFrom::Start(offset as u64 * 8_u64))?; // 8 is the byte size of a f64 and offset is not a byte offset but an index
                 let mut doubles = Vec::with_capacity(count as usize);
                 for _ in 0..count {
                     doubles.push(cursor.read_f64::<LittleEndian>()?);
@@ -208,7 +224,7 @@ impl GeoTiffKeyEntry {
             34737 => {
                 let mut cursor =
                     Cursor::new(ascii_vlr.as_ref().ok_or(CrsError::UnreadableGeotiffCrs)?);
-                cursor.seek(SeekFrom::Start(offset as u64))?;
+                cursor.seek(SeekFrom::Start(offset as u64))?; // no need to multiply the index as the byte size of char is 1
                 let mut string = String::with_capacity(count as usize);
                 for _ in 0..count {
                     string.push(cursor.read_u8()? as char);
