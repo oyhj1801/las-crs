@@ -47,11 +47,11 @@ pub fn parse_las_crs(header: &las::Header) -> CrsResult<EPSG> {
         }
     }
 
-    if crs_vlrs[0].is_some() {
+    let crs = if crs_vlrs[0].is_some() {
         if !header.has_wkt_crs() {
             log!(
                 Level::Warn,
-                "WKT CRS VLR found, but header says it does not exists"
+                "WKT CRS VLR found, but header says it does not exist"
             );
         }
         get_wkt_epsg(crs_vlrs[0].clone().unwrap())
@@ -59,7 +59,7 @@ pub fn parse_las_crs(header: &las::Header) -> CrsResult<EPSG> {
         if header.has_wkt_crs() {
             log!(
                 Level::Warn,
-                "No WKT CRS VLR found but header says it exists"
+                "No WKT CRS VLR found, but header says it exists"
             );
         }
         get_geotiff_epsg(crs_vlrs)
@@ -71,6 +71,13 @@ pub fn parse_las_crs(header: &las::Header) -> CrsResult<EPSG> {
             );
         }
         Err(CrsError::NoCrs)
+    }?;
+
+    // QGIS writes an invalid CRS VLR with epsg code 0 if no CRS is detected in COPC conversion
+    if crs.0 == 0 {
+        Err(CrsError::NoCrs)
+    } else {
+        Ok(crs)
     }
 }
 
