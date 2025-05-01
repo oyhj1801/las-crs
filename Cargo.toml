@@ -2,6 +2,13 @@
 name = "las-crs"
 version = "0.1.0"
 edition = "2021"
+authors = ["Øyvind Hjermstad <@yvind>]
+description = "Get the CRS from a las::Header"
+homepage = "https://github.com/yvind/las-crs"
+repository = "https://github.com/yvind/las-crs"
+readme = "README.md"
+license = "MIT"
+keywords = ["lidar", "crs"]
 
 [dependencies]
 byteorder = "1.5.0"
