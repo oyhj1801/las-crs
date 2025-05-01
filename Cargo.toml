@@ -2,7 +2,7 @@
 name = "las-crs"
 version = "0.1.0"
 edition = "2021"
-authors = ["Øyvind Hjermstad <@yvind>]
+authors = ["Øyvind Hjermstad <@yvind>"]
 description = "Get the CRS from a las::Header"
 homepage = "https://github.com/yvind/las-crs"
 repository = "https://github.com/yvind/las-crs"
