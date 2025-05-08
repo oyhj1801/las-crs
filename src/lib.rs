@@ -106,30 +106,54 @@ pub fn parse_las_crs(header: &las::Header) -> CrsResult<Crs> {
     }
 }
 
-/// find the epsg code located at the end of the WKT string
+/// find the EPSG codes for the WKT string
+///
+/// split the wkt string in two at VERTCRS
+/// and find the horizontal and vertical codes at the end of each substring
 fn get_wkt_epsg(bytes: &[u8]) -> CrsResult<Crs> {
-    let mut epsg_code = 0;
-    let mut has_code_started = false;
-    let mut power = 0;
-    for (i, byte) in bytes.iter().rev().enumerate() {
-        if (48..=57).contains(byte) {
-            // the byte is an ASCII encoded number
-            has_code_started = true;
+    let wkt: String = bytes.iter().map(|b| *b as char).collect();
 
-            epsg_code += 10_u16.pow(power) * (byte - 48) as u16;
-            power += 1;
-        } else if has_code_started {
-            break;
+    // VERT_CS for WKT v1 and VERTCRS for v2
+    let pieces = wkt.split_once("VERT");
+
+    let pieces = if let Some((horizontal, vertical)) = pieces {
+        // both horizontal and vertical codes exist
+        vec![horizontal.as_bytes(), vertical.as_bytes()]
+    } else {
+        // only horizontal code
+        vec![wkt.as_bytes()]
+    };
+
+    let mut epsg = [None, None];
+    for (pi, piece) in pieces.into_iter().enumerate() {
+        let mut epsg_code = 0;
+        let mut has_code_started = false;
+        let mut power = 0;
+        for (i, byte) in piece.iter().rev().enumerate() {
+            if (48..=57).contains(byte) {
+                // the byte is an ASCII encoded number
+                has_code_started = true;
+
+                epsg_code += 10_u16.pow(power) * (byte - 48) as u16;
+                power += 1;
+            } else if has_code_started {
+                break;
+            }
+            if i > 7 {
+                break;
+            }
         }
-        if i > 7 {
-            // the code should be a 4 or 5 digit number starting at index 2 or 3 from behind
-            // meaning that if i has reached 8 something is wrong
-            return Err(CrsError::UnreadableWktCrs);
+        if epsg_code != 0 {
+            epsg[pi] = Some(epsg_code);
         }
     }
+    if epsg[0].is_none() {
+        return Err(CrsError::UnreadableWktCrs);
+    }
+
     Ok(Crs {
-        horizontal: epsg_code,
-        vertical: None,
+        horizontal: epsg[0].unwrap(),
+        vertical: epsg[1],
     })
 }
 

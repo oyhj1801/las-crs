@@ -11,7 +11,7 @@ license = "MIT"
 keywords = ["lidar", "crs"]
 
 [dependencies]
-byteorder = "1.5.0"
-las = "0.9.3"
-log = "0.4.25"
-thiserror = "2.0.11"
+byteorder = "1.5"
+las = "0.9"
+log = "0.4"
+thiserror = "2.0"
