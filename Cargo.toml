@@ -1,6 +1,6 @@
 [package]
 name = "las-crs"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Øyvind Hjermstad <@yvind>"]
 description = "Get the CRS from a las::Header"
